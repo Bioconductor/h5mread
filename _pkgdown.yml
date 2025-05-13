@@ -1,0 +1,7 @@
+title: h5mread
+url: https://Bioconductor.github.io/h5mread
+
+template:
+  bootstrap: 5
+  params:
+    bootswatch: flatly

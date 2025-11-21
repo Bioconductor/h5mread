@@ -111,21 +111,14 @@ H5File(filepath, s3=FALSE, s3credentials=NULL, .no_rhdf5_h5id=FALSE)
           package for representing and operating on a conventional (a.k.a.
           dense) HDF5 dataset.
 
-    \item The \link[HDF5Array]{H5SparseMatrix} class defined in the
-          \pkg{HDF5Array} package for representing and operating on an
-          HDF5 sparse matrix.
-
-    \item The \link[HDF5Array]{H5ADMatrix} class defined in the \pkg{HDF5Array}
-          package for representing and operating on the central matrix of an
-          \code{h5ad} file, or any matrix in its \code{/layers} group.
-
-    \item The \link[HDF5Array]{TENxMatrix} class defined in the \pkg{HDF5Array}
-          package for representing and operating on a 10x Genomics dataset.
-
     \item The \code{\link{h5mread}} function in this package (\pkg{h5mread})
-          that is used internally by \link[HDF5Array]{HDF5Array},
-          \link[HDF5Array]{TENxMatrix}, and \link[HDF5Array]{H5ADMatrix}
-          objects, for (almost) all their data reading needs.
+          that is used internally by the on-disk array-like objects defined
+          in the \pkg{HDF5Array} package (\link[HDF5Array]{HDF5Array},
+          \link[HDF5Array]{TENxMatrix}, \link[HDF5Array]{H5ADMatrix}, etc...)
+          for (almost) all their data reading needs.
+
+    \item The \code{\link[rhdf5]{h5read}} function in the \pkg{rhdf5}
+          package.
 
     \item \code{\link{h5ls}} to list the content of an HDF5 file.
 
@@ -147,8 +140,14 @@ h5file1 <- H5File(test_h5)
 h5ls(h5file1)
 path(h5file1)
 
+## Use the H5File object with h5mread():
 h5mread(h5file1, "m2", list(1:10, 1:6))
 get_h5mread_returned_type(h5file1, "m2")
+
+## Note that the H5File object cannot be used directly with
+## rhdf5::h5read(). It first needs to be turned into an
+## H5IdComponent object:
+h5read(as(h5file1, "H5IdComponent"), "m2", list(1:10, 1:6))
 
 ## With a file stored in an Amazon S3 bucket:
 if (Sys.info()[["sysname"]] != "Darwin") {

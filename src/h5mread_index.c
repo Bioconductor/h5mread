@@ -9,6 +9,7 @@
 #include "h5mread_helpers.h"
 #include "TouchedChunks.h"
 
+#include <R_ext/Altrep.h>  /* only for DATAPTR_RW() */
 #include <stdlib.h>  /* for malloc, free */
 #include <string.h>  /* for memcmp */
 //#include <time.h>
@@ -444,7 +445,7 @@ static int read_chunk_data_4_5(const H5DSetDescriptor *h5dset,
 		const size_t *Rarray_dim, SEXP Rarray,
 		int method, int use_H5Dread_chunk)
 {
-	void *out = DATAPTR(Rarray);
+	void *out = DATAPTR_RW(Rarray);
 	if (out == NULL)
 		return -1;
 
@@ -874,7 +875,7 @@ static int read_data_6(const AllTChunks *all_tchunks,
 	size_t *inner_nchip_buf = R_alloc0_size_t_array(ndim);
 	LLongAEAE *inner_breakpoint_bufs = new_LLongAEAE(ndim, ndim);
 
-	void *out = DATAPTR(Rarray);
+	void *out = DATAPTR_RW(Rarray);
 	if (out == NULL) {
 		_destroy_TChunkIterator(&tchunk_iter);
 		return -1;

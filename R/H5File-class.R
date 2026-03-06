@@ -73,19 +73,23 @@
     }
 }
 
-.h5openfile <- function(filepath, s3=FALSE, s3credentials=NULL, use.rhdf5=FALSE)
+.h5openfile <- function(filepath, readonly=TRUE,
+                        s3=FALSE, s3credentials=NULL, use.rhdf5=FALSE)
 {
     if (!isSingleString(filepath))
         stop(wmsg("'filepath' must be a single string specifying ",
                   "the path or URL to an HDF5 file"))
+    if (!isTRUEorFALSE(readonly))
+        stop(wmsg("'readonly' must be TRUE or FALSE"))
     if (!isTRUEorFALSE(s3))
         stop(wmsg("'s3' must be TRUE or FALSE"))
-
+    if (s3 && !readonly)
+        stop(wmsg("'readonly' must be set to TRUE when 's3' is TRUE"))
     if (s3) {
         ID <- .h5openS3file(filepath, s3credentials=s3credentials,
                                       use.rhdf5=use.rhdf5)
     } else {
-        ID <- .h5openlocalfile(filepath, readonly=TRUE, use.rhdf5=use.rhdf5)
+        ID <- .h5openlocalfile(filepath, readonly=readonly, use.rhdf5=use.rhdf5)
     }
     ID
 }
@@ -136,16 +140,16 @@
 
 .ID_is_closed <- function(ID) { is.null(ID) || is.na(ID) }
 
-.open_H5FileID_xp <- function(xp, filepath, s3=FALSE, s3credentials=NULL,
-                                            use.rhdf5=FALSE)
+.open_H5FileID_xp <- function(xp, filepath, readonly=TRUE,
+                              s3=FALSE, s3credentials=NULL, use.rhdf5=FALSE)
 {
     ID <- .get_H5FileID_xp_ID(xp)
     if (!.ID_is_closed(ID)) {
         ## H5FileID object is already open.
         return(FALSE)
     }
-    ID <- .h5openfile(filepath, s3=s3, s3credentials=s3credentials,
-                                use.rhdf5=use.rhdf5)
+    ID <- .h5openfile(filepath, readonly=readonly,
+                      s3=s3, s3credentials=s3credentials, use.rhdf5=use.rhdf5)
     .set_H5FileID_xp_ID(xp, ID)
     TRUE
 }
@@ -183,10 +187,11 @@ close.H5FileID <- function(con, ...)
     .close_H5FileID_xp(con@xp, ..., use.rhdf5=con@from_rhdf5)
 }
 
-H5FileID <- function(filepath, s3=FALSE, s3credentials=NULL, use.rhdf5=FALSE)
+H5FileID <- function(filepath, readonly=TRUE,
+                     s3=FALSE, s3credentials=NULL, use.rhdf5=FALSE)
 {
-    ID <- .h5openfile(filepath, s3=s3, s3credentials=s3credentials,
-                                use.rhdf5=use.rhdf5)
+    ID <- .h5openfile(filepath, readonly=readonly,
+                      s3=s3, s3credentials=s3credentials, use.rhdf5=use.rhdf5)
     xp <- .new_H5FileID_xp(ID)
     reg.finalizer(xp,
                   function(e) .close_H5FileID_xp(e, use.rhdf5=use.rhdf5),
@@ -272,7 +277,7 @@ H5File <- function(filepath, s3=FALSE, s3credentials=NULL, .no_rhdf5_h5id=FALSE)
         rhdf5_h5id <- new("H5FileID")
     } else {
         rhdf5_h5id <- H5FileID(filepath, s3=s3, s3credentials=s3credentials,
-                                         use.rhdf5=TRUE)
+                               use.rhdf5=TRUE)
     }
     if (!s3)
         filepath <- file_path_as_absolute(filepath)

@@ -8,6 +8,7 @@
 #include "uaselection.h"
 #include "h5mread_helpers.h"
 
+#include <R_ext/Altrep.h>  /* only for DATAPTR_RW() */
 #include <stdlib.h>  /* for malloc, free */
 //#include <time.h>
 
@@ -402,7 +403,7 @@ SEXP _h5mread_startscounts(const H5DSetDescriptor *h5dset,
 	SEXP ans = PROTECT(allocVector(h5dset->h5type->Rtype, ans_len));
 
 	if (ans_len != 0) {
-		void *mem = DATAPTR(ans);
+		void *mem = DATAPTR_RW(ans);
 		if (mem == NULL)
 			goto on_error;
 

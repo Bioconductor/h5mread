@@ -10,6 +10,11 @@
 #include "TouchedChunks.h"
 
 #include <R_ext/Altrep.h>  /* only for DATAPTR_RW() */
+#include <Rversion.h>
+#if R_VERSION < R_Version(4, 6, 0)
+# define DATAPTR_RW(x) DATAPTR(x)
+#endif
+
 #include <stdlib.h>  /* for malloc, free */
 #include <string.h>  /* for memcmp */
 //#include <time.h>

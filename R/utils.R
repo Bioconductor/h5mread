@@ -51,3 +51,23 @@ normarg_h5_name <- function(name, what1="'name'",
     name
 }
 
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### compute_max_string_size()
+###
+
+### Computes the value to pass to the 'size' argument of
+### rhdf5::h5createDataset().
+compute_max_string_size <- function(x)
+{
+    ## We want this to work on any array-like object, not just ordinary
+    ## arrays, so we must use type() instead of is.character().
+    if (type(x) != "character")
+        return(NULL)
+    if (length(x) == 0L)
+        return(0L)
+    ## Calling nchar() on 'x' will trigger block processing if 'x' is a
+    ## DelayedArray object, so it could take a while.
+    max(nchar(x, type="bytes", keepNA=FALSE))
+}
+

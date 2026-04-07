@@ -1189,7 +1189,7 @@ SEXP C_show_H5DSetDescriptor_xp(SEXP xp)
 
 	Rprintf("- h5dim =");
 	for (int h5along = 0; h5along < h5dset->ndim; h5along++)
-		Rprintf(" %llu", h5dset->h5dim[h5along]);
+		Rprintf(" %lu", h5dset->h5dim[h5along]);
 	Rprintf("\n");
 
 	Rprintf("- h5layout = %s\n", H5layout2str(h5dset->h5layout));
@@ -1199,8 +1199,7 @@ SEXP C_show_H5DSetDescriptor_xp(SEXP xp)
 		Rprintf(" NULL\n");
 	} else {
 		for (int h5along = 0; h5along < h5dset->ndim; h5along++)
-			Rprintf(" %llu",
-				h5dset->h5chunkdim[h5along]);
+			Rprintf(" %lu", h5dset->h5chunkdim[h5along]);
 		if (h5dset->h5layout != H5D_CHUNKED &&
 		    h5dset->h5chunkdim == h5dset->h5dim)
 			Rprintf(" (artificially set to h5dim)");

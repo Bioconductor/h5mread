@@ -44,11 +44,11 @@ get_h5dimnames(filepath, name)
   }
   \item{filepath}{
     For \code{h5writeDimnames} and \code{h5readDimnames}: The path (as a
-    single string) to the HDF5 file where the dimnames should be written
-    to or read from.
+    single string) to an existing HDF5 file where the dimnames should be
+    written to or read from.
 
     For \code{set_h5dimnames} and \code{get_h5dimnames}: The path (as a
-    single string) to the HDF5 file where to set or get the
+    single string) to an existing HDF5 file where to set or get the
     \emph{h5dimnames}.
   }
   \item{name}{

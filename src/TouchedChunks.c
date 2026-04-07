@@ -309,7 +309,7 @@ static int read_h5chunk(hid_t dset_id,
 	if (chunk_storage_size > chunk_data_buf->data_size +
 				 CHUNK_COMPRESSION_OVERHEAD)
 	{
-		PRINT_TO_ERRMSG_BUF("chunk storage size (%llu) bigger "
+		PRINT_TO_ERRMSG_BUF("chunk storage size (%lu) bigger "
 				    "than expected (%llu + %d)",
 				    chunk_storage_size,
 				    (long long unsigned)
@@ -566,7 +566,7 @@ void _print_tchunk_info(const TChunkIterator *tchunk_iter)
 		}
 		if (along != 0)
 			Rprintf(", ");
-		Rprintf("#%lld=%llu:%llu", tchunkidx + 1,
+		Rprintf("#%lld=%lu:%lu", tchunkidx + 1,
 			tchunk_iter->tchunk_vps.h5chunk_vp.h5off[h5along] + 1,
 			tchunk_iter->tchunk_vps.h5chunk_vp.h5off[h5along] +
 			    tchunk_iter->tchunk_vps.h5chunk_vp.h5dim[h5along]);

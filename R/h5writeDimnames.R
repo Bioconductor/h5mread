@@ -164,6 +164,30 @@ validate_lengths_of_h5dimnames <- function(filepath, name)
     h5dimnames
 }
 
+### 'filepath' must already exist.
+.h5write_atomic_vector <- function(x, filepath, name, chunk=NULL)
+{
+    stopifnot(is.vector(x), is.atomic(x),
+              isSingleString(filepath), isSingleString(name))
+    x_len <- length(x)
+    if (is.null(chunk)) {
+        chunk <- x_len
+    } else {
+        stopifnot(isSingleNumber(chunk))
+        chunk <- min(chunk, x_len)
+    }
+    ## The only reason we call h5createDataset() before h5write() is because
+    ## the latter has no 'chunk' argument.
+    ok <- h5createDataset(filepath, name, dim=x_len,
+                          storage.mode=storage.mode(x),
+                          size=compute_max_string_size(x),
+                          chunk=chunk)
+    if (!ok)
+        stop(wmsg("failed to create dataset '", name, "' ",
+                  "in file '", filepath, "'"), call.=FALSE)
+    h5write(x, filepath, name)
+}
+
 ### dimnames:   A list (possibly named) with 1 list element per dimension in
 ###             dataset 'name'.
 ### name:       The name of the HDF5 dataset on which to set the dimnames.
@@ -202,7 +226,15 @@ h5writeDimnames <- function(dimnames, filepath, name, group=NA, h5dimnames=NULL)
     for (along in which(not_NULL)) {
         dn <- dimnames[[along]]
         h5dn <- h5dimnames[[along]]
-        h5write(dn, filepath, h5dn)
+        ## Note that h5createDataset() issues the following warning when
+        ## the product of the supplied 'dims' is > 1e6 and 'chunk' is not
+        ## specified:
+        ##   You created a large dataset with compression and chunking.
+        ##   The chunk size is equal to the dataset dimensions.
+        ##   If you want to read subsets of the dataset, you should test
+        ##   smaller chunk sizes to improve read times.
+        ## This is the only reason why we specify 'chunk=50000L' below.
+        .h5write_atomic_vector(dn, filepath, h5dn, chunk=50000L)
     }
 
     ## Attach new datasets to dimensions of dataset 'name'.

@@ -178,7 +178,7 @@ validate_lengths_of_h5dimnames <- function(filepath, name)
     }
     ## The only reason we call h5createDataset() before h5write() is because
     ## the latter has no 'chunk' argument.
-    ok <- h5createDataset(filepath, name, dim=x_len,
+    ok <- h5createDataset(filepath, name, dims=x_len,
                           storage.mode=storage.mode(x),
                           size=compute_max_string_size(x),
                           chunk=chunk)

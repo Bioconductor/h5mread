@@ -13,12 +13,12 @@ test_that("get_h5dimnames() and set_h5dimnames()", {
 test_that("h5readDimnames() and h5writeDimnames()", {
     h5file <- tempfile(fileext=".h5")
     h5createFile(h5file)
-    h5createGroup(h5file, "stuff")
-    Aname <- "stuff/A"
+    h5createGroup(h5file, "/stuff")
+    Aname <- "/stuff/A"
     A <- HDF5Array::writeHDF5Array(array(1:24, 4:1), h5file, Aname)
-    Bname <- "stuff/B"
+    Bname <- "/stuff/B"
     B <- HDF5Array::writeHDF5Array(array(101:124, 2:4), h5file, Bname)
-    Cname <- "stuff/C"
+    Cname <- "/stuff/C"
     C <- HDF5Array::writeHDF5Array(matrix(201:206, ncol=2), h5file, Cname)
 
     ## Write dimnames for 'A'.
@@ -49,7 +49,7 @@ test_that("h5readDimnames() and h5writeDimnames()", {
     expect_identical(current, NULL)
 
     names(Cdimnames)[[1]] <- "x"
-    h5writeDimnames(Cdimnames, h5file, Cname, group="more stuff")
+    h5writeDimnames(Cdimnames, h5file, Cname, group="/more stuff")
     current <- h5readDimnames(h5file, Cname)
     expect_identical(current, Cdimnames)
 })

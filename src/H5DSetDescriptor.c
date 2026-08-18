@@ -8,7 +8,7 @@
 #include "global_errmsg_buf.h"
 
 #include <stdlib.h>  /* for malloc, free */
-#include <string.h>  /* for strcmp */
+#include <string.h>  /* for strlen, strcmp */
 #include <limits.h>  /* for INT_MAX */
 
 
@@ -154,7 +154,7 @@ static const char *predef_native_type_as_string(hid_t native_type_id)
 	/* Should never happen if predef_native_type_as_string()
 	   is kept in sync with map_native_type_to_predef_type(). */
 	snprintf(s, sizeof(s), "unknown native type (%lld)",
-                               (long long) native_type_id);
+			       (long long) native_type_id);
 	return s;
 }
 
@@ -260,19 +260,119 @@ static char *get_h5name(hid_t obj_id)
 	return h5name;
 }
 
-/* Get the value (expected to be a string) of a given attribute of class
-   H5T_STRING. The function returns:
+
+/****************************************************************************
+ * _get_h5attrib_as_one_string()
+ * get_h5attrib_as_one_int()
+ */
+
+static int h5attr_is_scalar(hid_t attr_id)
+{
+	hid_t attr_space_id = H5Aget_space(attr_id);
+	if (attr_space_id < 0) {
+		PRINT_TO_ERRMSG_BUF("H5Aget_space() returned an error");
+		return -1;
+	}
+	/* If the attribute value is effectively stored as a scalar (DATASPACE
+	   SCALAR in h5dump's output) then H5Sget_simple_extent_ndims() will
+	   return 0. */
+	int rank = H5Sget_simple_extent_ndims(attr_space_id);
+	if (rank != 1) {
+		H5Sclose(attr_space_id);
+		if (rank < 0) {
+			PRINT_TO_ERRMSG_BUF("H5Sget_simple_extent_ndims() "
+					    "returned an error");
+			return -1;
+		}
+		return rank == 0 ? 1 : 0;
+	}
+	/* We also consider the attribute value to be a scalar if it's stored
+	   as a 1D dataset of length 1. */
+	hsize_t attr_len;
+	if (H5Sget_simple_extent_dims(attr_space_id, &attr_len, NULL) != rank) {
+		H5Sclose(attr_space_id);
+		PRINT_TO_ERRMSG_BUF("H5Sget_simple_extent_dims() returned "
+				    "an unexpected value");
+		return -1;
+	}
+	H5Sclose(attr_space_id);
+	return attr_len == 1;
+}
+
+static int read_h5attrib_string_val(hid_t attr_id, hid_t attr_type_id,
+				    CharAE *val)
+{
+	int attr_is_var_str = H5Tis_variable_str(attr_type_id);
+	if (attr_is_var_str < 0) {
+		PRINT_TO_ERRMSG_BUF("H5Tis_variable_str() returned an error");
+		return -1;
+	}
+	size_t val_nelt;
+	if (attr_is_var_str) {
+		/* When the attribute value is a variable-length string, it
+		   seems that H5Aread() expects 'buf' to be an array of n
+		   string pointers where n is the number of strings that make
+		   the attribute value. So in the general case 'buf' would
+		   be declared with something like 'char *buf[n]'. However,
+		   in our case n is 1 because we know that the attibute is a
+		   scalar string.
+		   Also it seems that H5Aread() takes care of allocating the
+		   memory needed to store the individual strings. So we need
+		   to remember to free() that memory when we are done!
+		   Surprisingly, the official documentation of H5Aread() does
+		   not explain any of this. All it says about the 'buf'
+		   argument is:
+			buf: Buffer for data to be read
+		   Luckily I was able to figure these things out by looking
+		   at Bernd Fischer code for the implementation of the
+		   H5Aread_helper_STRING() function in the rhdf5 package (see
+		   file rhdf5/src/H5A.c). */
+		char *buf[1];
+		int ret = H5Aread(attr_id, attr_type_id, buf);
+		if (ret < 0) {
+			PRINT_TO_ERRMSG_BUF("H5Aread() returned an error");
+			return -1;
+		}
+		val_nelt = strlen(buf[0]) + 1;
+		if (val_nelt > val->_buflength)
+			CharAE_extend(val, val_nelt);
+		/* memcpy() should be slightly faster than strcpy() because
+		   we already know how many characters to copy. */
+		memcpy(val->elts, buf[0], sizeof(char) * val_nelt);
+		free(buf[0]);
+	} else {
+		val_nelt = (size_t) H5Aget_storage_size(attr_id);
+		if (val_nelt == 0) {
+			PRINT_TO_ERRMSG_BUF("H5Aget_storage_size() returned 0");
+			return -1;
+		}
+		if (val_nelt > val->_buflength)
+			CharAE_extend(val, val_nelt);
+		int ret = H5Aread(attr_id, attr_type_id, val->elts);
+		if (ret < 0) {
+			PRINT_TO_ERRMSG_BUF("H5Aread() returned an error");
+			return -1;
+		}
+	}
+	CharAE_set_nelt(val, val_nelt);
+	return 0;
+}
+
+/* Get an attribute value as a single string. The attribute value is
+   expected to be a scalar string, that is, a 1D dataset of length 1 and
+   class H5T_STRING. The function returns:
     -1: if an error occurs;
      0: if dataset 'dset_id' has no attribute with the name specified
         in 'attr_name';
      1: if dataset 'dset_id' has an attribute with the name specified
-        in 'attr_name' but the attribute is not of class H5T_STRING;
+        in 'attr_name' but the attribute value is not a scalar string;
      2: if dataset 'dset_id' has an attribute with the name specified
-        in 'attr_name' and the attribute is of class H5T_STRING (in which
-        case, and only in this case, the value of the attribute is copied
+        in 'attr_name' and the attribute value is a scalar string (in
+        which case, and only in this case, the attribute value is copied
         to 'val').
  */
-int _get_h5attrib_strval(hid_t dset_id, const char *attr_name, CharAE *val)
+int _get_h5attrib_as_one_string(hid_t dset_id, const char *attr_name,
+				CharAE *val)
 {
 	int ret = H5Aexists(dset_id, attr_name);
 	if (ret < 0) {
@@ -285,6 +385,11 @@ int _get_h5attrib_strval(hid_t dset_id, const char *attr_name, CharAE *val)
 	if (attr_id < 0) {
 		PRINT_TO_ERRMSG_BUF("H5Aopen() returned an error");
 		return -1;
+	}
+	int attr_is_scalar = h5attr_is_scalar(attr_id);
+	if (attr_is_scalar <= 0) {
+		H5Aclose(attr_id);
+		return attr_is_scalar < 0 ? -1 : 1;
 	}
 	hid_t attr_type_id = H5Aget_type(attr_id);
 	if (attr_type_id < 0) {
@@ -304,40 +409,27 @@ int _get_h5attrib_strval(hid_t dset_id, const char *attr_name, CharAE *val)
 		H5Aclose(attr_id);
 		return 1;
 	}
-	size_t attr_size = (size_t) H5Aget_storage_size(attr_id);
-	if (attr_size == 0) {
-		H5Tclose(attr_type_id);
-		H5Aclose(attr_id);
-		PRINT_TO_ERRMSG_BUF("H5Aget_storage_size() returned 0");
-		return -1;
-	}
-	if (attr_size > val->_buflength)
-		CharAE_extend(val, attr_size);
-	CharAE_set_nelt(val, attr_size);
-	ret = H5Aread(attr_id, attr_type_id, val->elts);
+	ret = read_h5attrib_string_val(attr_id, attr_type_id, val);
 	H5Tclose(attr_type_id);
 	H5Aclose(attr_id);
-	if (ret < 0) {
-		PRINT_TO_ERRMSG_BUF("H5Aread() returned an error");
-		return -1;
-	}
-	return 2;
+	return ret < 0 ? -1 : 2;
 }
 
-/* Get the value (expected to be a single int) of a given attribute of
+/* Get an attribute value as a single integer. The attribute value is
+   expected to be a scalar integer, that is, a 1D dataset of length 1 and
    class H5T_INTEGER. The function returns:
     -1: if an error occurs;
      0: if dataset 'dset_id' has no attribute with the name specified
         in 'attr_name';
      1: if dataset 'dset_id' has an attribute with the name specified
-        in 'attr_name' but the attribute is not of class H5T_INTEGER
-        or its value is not a single int;
+        in 'attr_name' but the attribute value is not a scalar integer;
      2: if dataset 'dset_id' has an attribute with the name specified
-        in 'attr_name' and the attribute is of class H5T_INTEGER and
-        its value is a single int (in which case, and only in this case,
-        the value of the attribute is copied to 'val').
+        in 'attr_name' and the attribute value is a scalar integer (in
+        which case, and only in this case, the attribute value is copied
+        to 'val').
  */
-static int get_h5attrib_intval(hid_t dset_id, const char *attr_name, int *val)
+static int get_h5attrib_as_one_int(hid_t dset_id, const char *attr_name,
+				   int *val)
 {
 	int ret = H5Aexists(dset_id, attr_name);
 	if (ret < 0) {
@@ -350,6 +442,11 @@ static int get_h5attrib_intval(hid_t dset_id, const char *attr_name, int *val)
 	if (attr_id < 0) {
 		PRINT_TO_ERRMSG_BUF("H5Aopen() returned an error");
 		return -1;
+	}
+	int attr_is_scalar = h5attr_is_scalar(attr_id);
+	if (attr_is_scalar <= 0) {
+		H5Aclose(attr_id);
+		return attr_is_scalar < 0 ? -1 : 1;
 	}
 	hid_t attr_type_id = H5Aget_type(attr_id);
 	if (attr_type_id < 0) {
@@ -369,6 +466,8 @@ static int get_h5attrib_intval(hid_t dset_id, const char *attr_name, int *val)
 		H5Aclose(attr_id);
 		return 1;
 	}
+	/* Note that this check seems unnecessary because we've already
+	   checked that the attribute is a scalar integer above. */
 	size_t attr_size = (size_t) H5Aget_storage_size(attr_id);
 	if (attr_size != sizeof(int)) {
 		H5Tclose(attr_type_id);
@@ -921,22 +1020,25 @@ int _init_H5DSetDescriptor(H5DSetDescriptor *h5dset, hid_t dset_id,
 
 	/* Set struct member 'storage_mode_attr'. */
 	CharAE *buf = new_CharAE(0);
-	int ret = _get_h5attrib_strval(dset_id, "storage.mode", buf);
+	int ret = _get_h5attrib_as_one_string(dset_id, "storage.mode", buf);
 	if (ret < 0)
 		goto on_error;
 	if (ret == 1) {
 		PRINT_TO_ERRMSG_BUF("attribute \"storage.mode\" is "
-				    "not of expected class H5T_STRING");
+				    "not a scalar string");
 		goto on_error;
 	}
 	if (ret == 2) {
-		char *storage_mode_attr = (char *) malloc(CharAE_get_nelt(buf));
+		size_t buf_size = sizeof(char) * CharAE_get_nelt(buf);
+		char *storage_mode_attr = (char *) malloc(buf_size);
 		if (storage_mode_attr == NULL) {
 			PRINT_TO_ERRMSG_BUF("failed to allocate memory "
 					    "for 'storage_mode_attr'");
 			goto on_error;
 		}
-		strcpy(storage_mode_attr, buf->elts);
+		/* memcpy() should be slightly faster than strcpy() because
+		   we already know how many characters to copy. */
+		memcpy(storage_mode_attr, buf->elts, buf_size);
 		h5dset->storage_mode_attr = storage_mode_attr;
 	}
 
@@ -958,16 +1060,27 @@ int _init_H5DSetDescriptor(H5DSetDescriptor *h5dset, hid_t dset_id,
 
 	/* Set struct member 'as_na_attr'. */
 	int as_na_attr;
-	ret = get_h5attrib_intval(dset_id, "as.na", &as_na_attr);
+	ret = get_h5attrib_as_one_int(dset_id, "as.na", &as_na_attr);
 	if (ret < 0)
 		goto on_error;
 	if (ret == 1) {
-		PRINT_TO_ERRMSG_BUF("attribute \"as.na\" is "
-				    "not of expected class H5T_INTEGER"
-				    "or its value is not a single int");
+		PRINT_TO_ERRMSG_BUF("attribute \"as.na\" is not a "
+				    "scalar integer of class H5T_INTEGER");
 		goto on_error;
 	}
 	h5dset->as_na_attr = ret == 2 ? as_na_attr : 0;
+
+	/* Set struct member 'rhdf5_NA_OK'. */
+	int rhdf5_NA_OK;
+	ret = get_h5attrib_as_one_int(dset_id, "rhdf5-NA.OK", &rhdf5_NA_OK);
+	if (ret < 0)
+		goto on_error;
+	if (ret == 1) {
+		PRINT_TO_ERRMSG_BUF("attribute \"rhdf5-NA.OK\" is not a "
+				    "scalar integer of class H5T_INTEGER");
+		goto on_error;
+	}
+	h5dset->rhdf5_NA_OK = ret == 2 ? rhdf5_NA_OK : 0;
 
 	/* Set struct member 'h5space_id'. */
 	hid_t h5space_id = H5Dget_space(dset_id);
@@ -1180,6 +1293,8 @@ SEXP C_show_H5DSetDescriptor_xp(SEXP xp)
 	print_H5TypeDescriptor(h5dset->h5type);
 
 	Rprintf("- as_na_attr = %d\n", h5dset->as_na_attr);
+
+	Rprintf("- rhdf5_NA_OK = %d\n", h5dset->rhdf5_NA_OK);
 
 	Rprintf("- h5space_id = %ld\n", h5dset->h5space_id);
 

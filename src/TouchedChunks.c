@@ -711,9 +711,9 @@ int _reclaim_vlen_bufs(ChunkDataBuffer *chunk_data_buf)
 {
 	int ret;
 
-	ret = H5Dvlen_reclaim(chunk_data_buf->data_type_id,
-			      chunk_data_buf->data_space_id,
-			      H5P_DEFAULT, chunk_data_buf->data);
+	ret = H5Treclaim(chunk_data_buf->data_type_id,
+			 chunk_data_buf->data_space_id,
+			 H5P_DEFAULT, chunk_data_buf->data);
 	if (ret < 0)
 		PRINT_TO_ERRMSG_BUF("H5Dvlen_reclaim() returned an error");
 	return ret;

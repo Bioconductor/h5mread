@@ -15,8 +15,7 @@
 # define DATAPTR_RW(x) DATAPTR(x)
 #endif
 
-#include <stdlib.h>  /* for malloc, free */
-#include <string.h>  /* for memcmp */
+#include <stdlib.h>  /* for free */
 //#include <time.h>
 
 #ifdef _OPENMP
@@ -112,8 +111,9 @@ static inline void copy_vlen_string_to_character_Rarray(
 {
 	/* Variable length strings are always null-terminated. */
 	const char *s = in[in_offset];
-	int is_na = h5dset->as_na_attr &&
-		    s[0] == 'N' && s[1] == 'A' && s[2] == 0;
+	int is_na = s == NULL ||
+		    (h5dset->as_na_attr &&
+			s[0] == 'N' && s[1] == 'A' && s[2] == 0);
 	if (is_na) {
 		SET_STRING_ELT(Rarray, Rarray_offset, NA_STRING);
 	} else {
@@ -135,8 +135,8 @@ static inline void copy_string_to_character_Rarray(
 	for (s_len = 0; s_len < h5type_size; s_len++)
 		if (s[s_len] == 0)
 			break;
-	int is_na = h5dset->as_na_attr && s_len == 2 &&
-		    s[0] == 'N' && s[1] == 'A';
+	int is_na = h5dset->as_na_attr &&
+			s_len == 2 && s[0] == 'N' && s[1] == 'A';
 	if (is_na) {
 		SET_STRING_ELT(Rarray, Rarray_offset, NA_STRING);
 	} else {

@@ -68,6 +68,7 @@ typedef struct h5dset_descriptor_t {
 
 	/* Struct members below will be set only when _init_H5DSetDescriptor()
 	   is called with 'get_Rtype_only' set to 0. */
+
 	int as_na_attr;
 	hid_t h5space_id;
 	int ndim;
@@ -85,7 +86,7 @@ hsize_t *_alloc_hsize_t_buf(
 	const char *what
 );
 
-int _get_h5attrib_strval(
+int _get_h5attrib_as_one_string(
 	hid_t dset_id,
 	const char *attr_name,
 	CharAE *buf

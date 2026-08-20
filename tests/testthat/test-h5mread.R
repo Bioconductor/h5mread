@@ -1,3 +1,31 @@
+test_that("h5mread() on H5T_STRING dataset", {
+    h5file <- tempfile(fileext=".h5")
+    h5createFile(h5file)
+    m <- matrix(c("abc", "", NA, "NA", "na", NA), ncol=3)
+    m1 <- matrix(c("abc", "", NA, NA, "na", NA), ncol=3)
+    m2 <- matrix(c("abc", "", "NA", "NA", "na", "NA"), ncol=3)
+
+    ## Variable-length strings.
+    h5createDataset(h5file, "A", dim(m), storage.mode="character")
+    expected <- matrix(NA_character_, nrow=2, ncol=3)
+    expect_identical(h5mread(h5file, "A"), expected)
+    h5write(m, h5file, "A")
+    expect_identical(h5readAttributes(h5file, "A")$as.na, array(1L))
+    expect_identical(h5mread(h5file, "A"), m1)
+    h5deleteAttribute(h5file, "A", "as.na")
+    expect_identical(h5mread(h5file, "A"), m2)
+
+    ## Fixed-size strings (NAs will come back as the "NA" string by default).
+    h5createDataset(h5file, "B", dim(m), storage.mode="character", size=5)
+    expected <- matrix("", nrow=2, ncol=3)
+    expect_identical(h5mread(h5file, "B"), expected)
+    h5write(m, h5file, "B")
+    expect_identical(h5readAttributes(h5file, "B")$as.na, array(1L))
+    expect_identical(h5mread(h5file, "B"), m1)
+    h5deleteAttribute(h5file, "B", "as.na")
+    expect_identical(h5mread(h5file, "B"), m2)
+})
+
 test_that("h5mread() on 2D dataset", {
     do_2D_tests <- function(m, M, noreduce=FALSE, as.integer=FALSE, method=0L) {
         read <- function(starts=NULL, counts=NULL, as.vector=NA)
@@ -93,9 +121,9 @@ test_that("h5mread() on 2D dataset", {
         }
         test_with()
         test_with(list(NULL, NULL))
-	test_with(list(integer(0), NULL))
-	test_with(list(NULL, integer(0)))
-	test_with(list(integer(0), integer(0)))
+        test_with(list(integer(0), NULL))
+        test_with(list(NULL, integer(0)))
+        test_with(list(integer(0), integer(0)))
         test_with(list(c(2:5, 7:10), NULL))
         test_with(list(NULL, 1:2))
         test_with(list(7:10, c(1:2, 5)))
@@ -341,11 +369,11 @@ test_that("h5mread() on 3D dataset", {
         }
         test_with()
         test_with(list(NULL, NULL, NULL))
-	test_with(list(integer(0), NULL, NULL))
-	test_with(list(NULL, integer(0), NULL))
-	test_with(list(NULL, NULL, integer(0)))
-	test_with(list(NULL, integer(0), integer(0)))
-	test_with(list(integer(0), integer(0), integer(0)))
+        test_with(list(integer(0), NULL, NULL))
+        test_with(list(NULL, integer(0), NULL))
+        test_with(list(NULL, NULL, integer(0)))
+        test_with(list(NULL, integer(0), integer(0)))
+        test_with(list(integer(0), integer(0), integer(0)))
         test_with(list(c(2:5, 7:10), NULL, NULL))
         test_with(list(NULL, c(11:12, 14), NULL))
         test_with(list(NULL, NULL, 1:2))

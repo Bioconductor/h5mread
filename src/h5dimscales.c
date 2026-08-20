@@ -58,7 +58,8 @@ static herr_t visitor(hid_t dset_id, unsigned int along, hid_t dimscale_id,
 	ret = _init_H5DSetDescriptor(h5dimscale, dimscale_id, 0, 0);
 	if (ret < 0)
 		return -1;
-	ret = _get_h5attrib_strval(dimscale_id, "NAME", visitor_data->NAME_buf);
+	ret = _get_h5attrib_as_one_string(dimscale_id, "NAME",
+					  visitor_data->NAME_buf);
 	if (ret < 0) {
 		_destroy_H5DSetDescriptor(h5dimscale);
 		return -1;
@@ -160,7 +161,7 @@ static int check_NAME_attribute(hid_t dimscale_id, const char *dimscale,
 {
 	int ret;
 
-	ret = _get_h5attrib_strval(dimscale_id, "NAME", NAME_buf);
+	ret = _get_h5attrib_as_one_string(dimscale_id, "NAME", NAME_buf);
 	if (ret < 0)
 		return -1;
 	if (ret == 0) {
@@ -193,9 +194,9 @@ static int check_NAME_attribute(hid_t dimscale_id, const char *dimscale,
 		PRINT_TO_ERRMSG_BUF("won't convert dataset '%s' to a "
 				    "Dimension Scale named \"%s\"\n  "
 				    "because dataset already has a \"NAME\" "
-				    "attribute that is **not** of class "
-				    "H5T_STRING\n  (converting the dataset "
-				    "to a Dimension Scale would replace this "
+				    "attribute that is **not** a scalar "
+				    "string\n  (converting the dataset to "
+				    "a Dimension Scale would replace this "
 				    "attribute)", dimscale, scalename);
 		return -1;
 	}

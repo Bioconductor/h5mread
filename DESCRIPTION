@@ -8,14 +8,14 @@ Description: The main function in the h5mread package is h5mread(), which
 biocViews: Infrastructure, DataRepresentation, DataImport
 URL: https://bioconductor.org/packages/h5mread
 BugReports: https://github.com/Bioconductor/h5mread/issues
-Version: 1.4.0
+Version: 1.4.1
 License: Artistic-2.0
 Encoding: UTF-8
 Authors@R: person("Hervé", "Pagès", role=c("aut", "cre"),
 	          email="hpages.on.github@gmail.com",
 		  comment=c(ORCID="0009-0002-8272-4522"))
 Depends: R (>= 4.5), methods, rhdf5, BiocGenerics, SparseArray
-Imports: stats, tools, rhdf5filters, S4Vectors, IRanges, S4Arrays
+Imports: stats, tools, rhdf5filters, S4Vectors (>= 0.50.2), IRanges, S4Arrays
 LinkingTo: Rhdf5lib, S4Vectors
 SystemRequirements: GNU make
 Suggests: BiocParallel, ExperimentHub, TENxBrainData, HDF5Array,

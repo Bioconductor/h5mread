@@ -1,28 +1,42 @@
 test_that("h5mread() on H5T_STRING dataset", {
     h5file <- tempfile(fileext=".h5")
     h5createFile(h5file)
-    m <- matrix(c("abc", "", NA, "NA", "na", NA), ncol=3)
+    ## A mix of NAs and "NA"'s.
+    m0 <- matrix(c("abc", "",  NA,  "NA", "na",  NA),  ncol=3)
+    m1 <- matrix(c("abc", "", "NA", "NA", "na", "NA"), ncol=3)
+    m2 <- matrix(c("abc", "",  NA,   NA,  "na",  NA),  ncol=3)
 
     ## Variable-length strings.
-    h5createDataset(h5file, "A", dim(m), storage.mode="character")
-    h5write(m, h5file, "A")
+    h5createDataset(h5file, "A", dim(m0), storage.mode="character")
+    expected <- matrix(NA_character_, nrow=2, ncol=3)
+    expect_identical(h5mread(h5file, "A"), expected)
+    h5write(m0, h5file, "A")
     expect_true(is.null(h5readAttributes(h5file, "A")$as.na))
-    expect_identical(h5mread(h5file, "A"), m)
+    expect_identical(h5mread(h5file, "A"), m0)
+    coo <- h5mread(h5file, "A", as.sparse=TRUE)
+    expect_true(is(coo, "COO_SparseMatrix"))
+    expect_identical(as.matrix(coo), m0)
 
     ## Fixed-size strings (NAs will come back as the "NA" string by default).
-    h5createDataset(h5file, "B", dim(m), storage.mode="character", size=6)
-    h5write(m, h5file, "B")
-    expect_true(is.null(h5readAttributes(h5file, "B")$as.na))
-    expected <- matrix(c("abc", "", "NA", "NA", "na", "NA"), ncol=3)
+    h5createDataset(h5file, "B", dim(m0), storage.mode="character", size=5)
+    expected <- matrix("", nrow=2, ncol=3)
     expect_identical(h5mread(h5file, "B"), expected)
+    h5write(m0, h5file, "B")
+    expect_true(is.null(h5readAttributes(h5file, "B")$as.na))
+    expect_identical(h5mread(h5file, "B"), m1)
+    coo <- h5mread(h5file, "B", as.sparse=TRUE)
+    expect_true(is(coo, "COO_SparseMatrix"))
+    expect_identical(as.matrix(coo), m1)
 
-    ## Adding attribute "as.na" to the HDF5 dataset.
-    expected <- matrix(c("abc", "", NA, NA, "na", NA), ncol=3)
+    ## Adding attribute "as.na" to the HDF5 datasets.
     for (name in c("A", "B")) {
-        h5writeAttribute(1L, h5file, "as.na", name, asScalar=TRUE)
-        expect_identical(h5mread(h5file, name), expected)
-        h5writeAttribute(1L, h5file, "as.na", name, asScalar=FALSE)
-        expect_identical(h5mread(h5file, name), expected)
+        for (asScalar in c(FALSE, TRUE)) {
+            h5writeAttribute(1L, h5file, "as.na", name, asScalar=asScalar)
+            expect_identical(h5mread(h5file, name), m2)
+            coo <- h5mread(h5file, name, as.sparse=TRUE)
+            expect_true(is(coo, "COO_SparseMatrix"))
+            expect_identical(as.matrix(coo), m2)
+        }
     }
 })
 

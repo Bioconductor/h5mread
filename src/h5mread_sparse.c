@@ -9,7 +9,7 @@
 #include "h5mread_helpers.h"
 #include "TouchedChunks.h"
 
-#include <string.h>  /* for memcpy */
+#include <string.h>  /* for memcpy, strlen */
 #include <limits.h>  /* for INT_MAX */
 //#include <time.h>
 
@@ -156,22 +156,22 @@ static inline void append_array_index_to_nzcoo_bufs(
 	return;
 }
 
-static inline int CharAEAE_append_if_nonzero(CharAEAE *aeae, const char *s,
-					     size_t n)
+static inline int CharAEAE_safe_append(CharAEAE *aeae, const char *s,
+				       size_t s_len)
 {
-	size_t s_len;
-	for (s_len = 0; s_len < n; s_len++)
-		if (s[s_len] == 0)
-			break;
-	if (s_len == 0)
-		return 0;
 	/* We don't use CharAEAE_get_nelt() for maximum speed. */
 	if (aeae->_nelt >= NZDATA_MAXLENGTH)
 		return -1;
-	CharAE *ae = new_CharAE(s_len);
-	memcpy(ae->elts, s, s_len);
-	/* We don't use CharAE_set_nelt() for maximum speed. */
-	ae->_nelt = s_len;
+	CharAE *ae;
+	if (s == NULL) {
+		/* new_CHARACTER_from_CharAEAE() will turn this into an NA. */
+		ae = NULL;
+	} else {
+		ae = new_CharAE(s_len);
+		memcpy(ae->elts, s, s_len);
+		/* We don't use CharAE_set_nelt() for maximum speed. */
+		ae->_nelt = s_len;
+	}
 	CharAEAE_fast_append(aeae, ae);
 	return 1;
 }
@@ -180,13 +180,12 @@ static long long int copy_selected_string_chunk_data_to_CharAEAE_buf(
 		const AllTChunks *all_tchunks,
 		const TChunkViewports *tchunk_vps,
 		size_t *inner_midx_buf,
-		const char *in,
+		const void *in,
 		IntAEAE *nzcoo_bufs, CharAEAE *nzdata_buf)
 {
 	const H5DSetDescriptor *h5dset = all_tchunks->h5dset;
 	int ndim = h5dset->ndim;
-	size_t h5type_size = h5dset->h5type->h5type_size;
-	size_t in_offset;
+	size_t in_offset, s_len;
 	_init_in_offset(ndim,
 			all_tchunks->index,
 			h5dset->h5chunkdim,
@@ -194,19 +193,30 @@ static long long int copy_selected_string_chunk_data_to_CharAEAE_buf(
 			&tchunk_vps->h5chunk_vp,
 			&in_offset);
 	while (1) {
-		const char *s = in + in_offset * h5type_size;
-		int ret = CharAEAE_append_if_nonzero(nzdata_buf, s,
-						     h5type_size);
-		if (ret < 0) {
-			PRINT_TO_ERRMSG_BUF("too many non-zero "
-					    "values to load");
-			return -1;
+		const char *s;
+		if (h5dset->h5type->is_variable_str) {
+			s = ((const char * const *) in)[in_offset];
+			s_len = s == NULL ? 1 : strlen(s);
+		} else {
+			size_t h5type_size = h5dset->h5type->h5type_size;
+			s = (const char *) in + in_offset * h5type_size;
+			for (s_len = 0; s_len < h5type_size; s_len++)
+				if (s[s_len] == 0)
+					break;
 		}
-		if (ret > 0)
-			append_array_index_to_nzcoo_bufs(
-					    &tchunk_vps->mem_vp,
-					    inner_midx_buf,
-					    nzcoo_bufs);
+		if (s_len != 0) {
+			int ret = CharAEAE_safe_append(nzdata_buf, s, s_len);
+			if (ret < 0) {
+				PRINT_TO_ERRMSG_BUF("too many non-zero "
+						    "values to load");
+				return -1;
+			}
+			if (ret > 0)
+				append_array_index_to_nzcoo_bufs(
+						    &tchunk_vps->mem_vp,
+						    inner_midx_buf,
+						    nzcoo_bufs);
+		}
 		int inner_moved_along = next_midx(ndim,
 					    tchunk_vps->mem_vp.dim,
 					    inner_midx_buf);
@@ -620,6 +630,8 @@ static int read_data_7(TChunkIterator *tchunk_iter,
 				nzcoo_bufs, nzdata_buf);
 		if (ret < 0)
 			break;
+		if (h5dset->h5type->is_variable_str)
+			_reclaim_vlen_bufs(&chunk_data_buf);
 	}
 	_destroy_ChunkDataBuffer(&chunk_data_buf);
 	return ret;

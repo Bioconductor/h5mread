@@ -1070,18 +1070,6 @@ int _init_H5DSetDescriptor(H5DSetDescriptor *h5dset, hid_t dset_id,
 	}
 	h5dset->as_na_attr = ret == 2 ? as_na_attr : 0;
 
-	/* Set struct member 'rhdf5_NA_OK'. */
-	int rhdf5_NA_OK;
-	ret = get_h5attrib_as_one_int(dset_id, "rhdf5-NA.OK", &rhdf5_NA_OK);
-	if (ret < 0)
-		goto on_error;
-	if (ret == 1) {
-		PRINT_TO_ERRMSG_BUF("attribute \"rhdf5-NA.OK\" is not a "
-				    "scalar integer of class H5T_INTEGER");
-		goto on_error;
-	}
-	h5dset->rhdf5_NA_OK = ret == 2 ? rhdf5_NA_OK : 0;
-
 	/* Set struct member 'h5space_id'. */
 	hid_t h5space_id = H5Dget_space(dset_id);
 	if (h5space_id < 0) {
@@ -1293,8 +1281,6 @@ SEXP C_show_H5DSetDescriptor_xp(SEXP xp)
 	print_H5TypeDescriptor(h5dset->h5type);
 
 	Rprintf("- as_na_attr = %d\n", h5dset->as_na_attr);
-
-	Rprintf("- rhdf5_NA_OK = %d\n", h5dset->rhdf5_NA_OK);
 
 	Rprintf("- h5space_id = %ld\n", h5dset->h5space_id);
 

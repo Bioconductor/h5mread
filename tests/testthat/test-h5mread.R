@@ -1,3 +1,31 @@
+test_that("h5mread() on H5T_STRING dataset", {
+    h5file <- tempfile(fileext=".h5")
+    h5createFile(h5file)
+    m <- matrix(c("abc", "", NA, "NA", "na", NA), ncol=3)
+
+    ## Variable-length strings.
+    h5createDataset(h5file, "A", dim(m), storage.mode="character")
+    h5write(m, h5file, "A")
+    expect_true(is.null(h5readAttributes(h5file, "A")$as.na))
+    expect_identical(h5mread(h5file, "A"), m)
+
+    ## Fixed-size strings (NAs will come back as the "NA" string by default).
+    h5createDataset(h5file, "B", dim(m), storage.mode="character", size=6)
+    h5write(m, h5file, "B")
+    expect_true(is.null(h5readAttributes(h5file, "B")$as.na))
+    expected <- matrix(c("abc", "", "NA", "NA", "na", "NA"), ncol=3)
+    expect_identical(h5mread(h5file, "B"), expected)
+
+    ## Adding attribute "as.na" to the HDF5 dataset.
+    expected <- matrix(c("abc", "", NA, NA, "na", NA), ncol=3)
+    for (name in c("A", "B")) {
+        h5writeAttribute(1L, h5file, "as.na", name, asScalar=TRUE)
+        expect_identical(h5mread(h5file, name), expected)
+        h5writeAttribute(1L, h5file, "as.na", name, asScalar=FALSE)
+        expect_identical(h5mread(h5file, name), expected)
+    }
+})
+
 test_that("h5mread() on 2D dataset", {
     do_2D_tests <- function(m, M, noreduce=FALSE, as.integer=FALSE, method=0L) {
         read <- function(starts=NULL, counts=NULL, as.vector=NA)

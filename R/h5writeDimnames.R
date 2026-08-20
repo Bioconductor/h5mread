@@ -178,9 +178,13 @@ validate_lengths_of_h5dimnames <- function(filepath, name)
     }
     ## The only reason we call h5createDataset() before h5write() is because
     ## the latter has no 'chunk' argument.
+    ## Also, starting with rhdf5 2.57.10, fixed-size string datasets no longer
+    ## support NAs. The recommendation now is to use a variable-length string
+    ## dataset (by setting 'size' to NULL, the default) if there's a chance
+    ## that the character array to write to disk contains NAs.
     ok <- h5createDataset(filepath, name, dims=x_len,
                           storage.mode=storage.mode(x),
-                          size=compute_max_string_size(x),
+                          #size=compute_max_string_size(x),
                           chunk=chunk)
     if (!ok)
         stop(wmsg("failed to create dataset '", name, "' ",

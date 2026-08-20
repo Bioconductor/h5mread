@@ -69,8 +69,7 @@ typedef struct h5dset_descriptor_t {
 	/* Struct members below will be set only when _init_H5DSetDescriptor()
 	   is called with 'get_Rtype_only' set to 0. */
 
-	int as_na_attr;   // old "as.na" attribute got dropped in rhdf5 2.57.10
-	int rhdf5_NA_OK;  // new "rhdf5-NA.OK" attr replaces old "as.na" attr
+	int as_na_attr;   // "as.na" attribute got dropped in rhdf5 2.57.10
 	hid_t h5space_id;
 	int ndim;
 	hid_t h5plist_id;

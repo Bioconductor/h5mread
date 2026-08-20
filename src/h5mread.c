@@ -342,7 +342,7 @@ static SEXP h5mread(hid_t dset_id, SEXP starts, SEXP counts, int noreduce,
 			if (h5type->Rtype == LGLSXP) {
 				fix_logical_NAs(VECTOR_ELT(ans, 2));
 			} else if (h5type->Rtype == STRSXP &&
-				   (h5dset.as_na_attr || h5dset.rhdf5_NA_OK))
+				   h5dset.as_na_attr)
 			{
 				set_character_NAs(VECTOR_ELT(ans, 2));
 			}

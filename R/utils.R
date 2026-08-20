@@ -58,6 +58,9 @@ normarg_h5_name <- function(name, what1="'name'",
 
 ### Computes the value to pass to the 'size' argument of
 ### rhdf5::h5createDataset().
+### NOTE: No longer used. As per rhdf5's recommendation (starting with
+### version 2.57.10), variable-length strings should be used rather than
+### fixed-size strings when creating an H5T_STRING dataset.
 compute_max_string_size <- function(x)
 {
     ## We want this to work on any array-like object, not just ordinary

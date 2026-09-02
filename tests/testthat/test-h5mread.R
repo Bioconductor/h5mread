@@ -1,12 +1,14 @@
 test_that("h5mread() on H5T_STRING dataset", {
     h5file <- tempfile(fileext=".h5")
     h5createFile(h5file)
+
     ## A mix of NAs and "NA"'s.
     m0 <- matrix(c("abc", "",  NA,  "NA", "na",  NA),  ncol=3)
     m1 <- matrix(c("abc", "", "NA", "NA", "na", "NA"), ncol=3)
     m2 <- matrix(c("abc", "",  NA,   NA,  "na",  NA),  ncol=3)
 
-    ## Variable-length strings.
+    ## --- Variable-length strings ---
+
     h5createDataset(h5file, "A", dim(m0), storage.mode="character")
     expected <- matrix(NA_character_, nrow=2, ncol=3)
     expect_identical(h5mread(h5file, "A"), expected)
@@ -17,27 +19,34 @@ test_that("h5mread() on H5T_STRING dataset", {
     expect_true(is(coo, "COO_SparseMatrix"))
     expect_identical(as.matrix(coo), m0)
 
-    ## Fixed-size strings (NAs will come back as the "NA" string by default).
+    ## Add "as.na" attribute.
+    for (asScalar in c(FALSE, TRUE)) {
+        h5writeAttribute(1L, h5file, "as.na", "A", asScalar=asScalar)
+        expect_identical(h5mread(h5file, "A"), m2)
+        coo <- h5mread(h5file, "A", as.sparse=TRUE)
+        expect_true(is(coo, "COO_SparseMatrix"))
+        expect_identical(as.matrix(coo), m2)
+    }
+
+    ## --- Fixed-size strings ---
+
     h5createDataset(h5file, "B", dim(m0), storage.mode="character", size=5)
     expected <- matrix("", nrow=2, ncol=3)
     expect_identical(h5mread(h5file, "B"), expected)
     h5write(m0, h5file, "B")
+    expect_equal(as.vector(h5readAttributes(h5file, "B")$as.na), 1)
+    expect_identical(h5mread(h5file, "B"), m2)
+    coo <- h5mread(h5file, "B", as.sparse=TRUE)
+    expect_true(is(coo, "COO_SparseMatrix"))
+    expect_identical(as.matrix(coo), m2)
+
+    ## Drop "as.na" attribute.
+    h5deleteAttribute(h5file, "B", "as.na")
     expect_true(is.null(h5readAttributes(h5file, "B")$as.na))
     expect_identical(h5mread(h5file, "B"), m1)
     coo <- h5mread(h5file, "B", as.sparse=TRUE)
     expect_true(is(coo, "COO_SparseMatrix"))
     expect_identical(as.matrix(coo), m1)
-
-    ## Adding attribute "as.na" to the HDF5 datasets.
-    for (name in c("A", "B")) {
-        for (asScalar in c(FALSE, TRUE)) {
-            h5writeAttribute(1L, h5file, "as.na", name, asScalar=asScalar)
-            expect_identical(h5mread(h5file, name), m2)
-            coo <- h5mread(h5file, name, as.sparse=TRUE)
-            expect_true(is(coo, "COO_SparseMatrix"))
-            expect_identical(as.matrix(coo), m2)
-        }
-    }
 })
 
 test_that("h5mread() on 2D dataset", {

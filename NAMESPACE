@@ -69,7 +69,7 @@ exportMethods(
 
 export(
     ## h5dim.R:
-    h5exists, h5isdataset, h5isgroup,
+    h5exists, h5isdataset, h5isgroup, h5readattribs,
     stop_if_big_h5_dimensions, h5dim, h5chunkdim,
 
     ## H5File-class.R:

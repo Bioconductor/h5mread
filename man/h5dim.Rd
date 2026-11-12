@@ -3,6 +3,7 @@
 \alias{h5exists}
 \alias{h5isdataset}
 \alias{h5isgroup}
+\alias{h5readattribs}
 
 \alias{stop_if_big_h5_dimensions}
 
@@ -24,13 +25,14 @@ h5chunkdim(filepath, name, adjust=FALSE)
 
 \arguments{
   \item{filepath}{
-    The path (as a single string) to an HDF5 file.
+    The path (as a single string) to an HDF5 file. Can also be an
+    \link{H5File} object.
   }
   \item{name}{
     The name (as a single string) of a dataset in the HDF5 file.
   }
   \item{as.integer}{
-    By default \code{h5dim()} returns the dimensions of the dataset in
+    By default, \code{h5dim()} returns the dimensions of the dataset in
     an integer vector and will raise an error if any dimension is greater
     than \code{.Machine$integer.max} (= 2^31 - 1).
 
@@ -39,7 +41,7 @@ h5chunkdim(filepath, name, adjust=FALSE)
     returned in a numeric vector.
   }
   \item{adjust}{
-    By default \code{h5chunkdim()} returns the dimensions of the chunks
+    By default, \code{h5chunkdim()} returns the dimensions of the chunks
     as reported by \code{H5Pget_chunk} from the C HDF5 API. Note that the
     HDF5 specs allow some or all the dimensions of the chunks to be greater
     than the dimensions of the dataset.

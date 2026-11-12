@@ -93,6 +93,21 @@ h5isgroup <- function(filepath, name)
 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### h5readattribs()
+###
+
+h5readattribs <- function(filepath, group)
+{
+    ## Its man page does not mention it but it seems that h5readAttributes()
+    ## accepts an H5IdComponent object. Not great to rely on undocumented
+    ## features though :-/
+    if (is(filepath, "H5File"))
+        filepath <- as(filepath, "H5IdComponent")
+    h5readAttributes(filepath, group)
+}
+
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### h5dim() and h5chunkdim()
 ###
 

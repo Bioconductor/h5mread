@@ -118,7 +118,7 @@
     .Call2("C_set_H5FileID_xp_ID", xp, ID, PACKAGE="h5mread")
 }
 
-### Return a string, or NA_character_, or NULL.
+### Returns a string, or NA_character_, or NULL.
 ### Note that NULL is returned if the H5FileID object was not properly
 ### initialized e.g. if it was constructed with 'new("H5FileID")' instead
 ### of with the H5FileID() constructor function.

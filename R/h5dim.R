@@ -82,9 +82,9 @@ h5isgroup <- function(filepath, name)
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### h5dim() and h5chunkdim()
-### 
-    
-### Return an object of class H5IdComponent representing an H5 dataset ID.
+###
+
+### Returns an object of class H5IdComponent representing an H5 dataset ID.
 .get_h5dataset <- function(filepath, name)
 {
     if (substr(name, 1L, 1L) != "/")
@@ -102,25 +102,33 @@ h5isgroup <- function(filepath, name)
     .H5Dopen(gid, name)
 }
 
-### NOT exported but used in the HDF5Array package!
-dim_as_integer <- function(dim, filepath, name, what="HDF5 dataset")
-{   
-    if (is.integer(dim))
-        return(dim)
-    if (any(dim > .Machine$integer.max)) {
-        dim_in1string <- paste0(dim, collapse=" x ")
-        if (is(filepath, "H5File"))
-            filepath <- path(filepath)
-        stop(wmsg("Dimensions of ", what, " are too big: ", dim_in1string),
-             "\n\n  ",
-             wmsg("(This error is about HDF5 dataset '", name, "' ",
-                  "from file '", filepath, "'.)"),
-             "\n\n  ",
-             wmsg("Please note that the HDF5Array package only ",
-                  "supports datasets where each dimension is ",
-                  "<= '.Machine$integer.max' (= 2**31 - 1)."))
+### Used in the HDF5Array package!
+### The error message tries to provide more context than the very generic
+### error message issued by S4Arrays:::as_integer_dim().
+stop_if_big_h5_dimensions <- function(dim, filepath, name,
+                                      of_what="HDF5 dataset",
+                                      about_what=of_what)
+{
+    stopifnot(is.numeric(dim))
+    if (all(dim <= .Machine$integer.max))
+        return(invisible(NULL))
+    dim_in1string <- paste0(dim, collapse=" x ")
+    if (is(filepath, "H5File"))
+        filepath <- path(filepath)
+    supports_what <- of_what
+    if (endsWith(supports_what, "matrix")) {
+        supports_what <- sub("matrix$", "matrices", supports_what)
+    } else if (!endsWith(supports_what, "s")) {
+        supports_what <- paste0(supports_what, "s")
     }
-    as.integer(dim)
+    stop(wmsg("Dimensions of ", of_what, " are too big: ", dim_in1string),
+         "\n\n  ",
+         wmsg("(This error is about ", about_what, " '", name, "' ",
+              "from HDF5 file '", filepath, "'.)"),
+         "\n\n  ",
+         wmsg("Please note that the HDF5Array package only ",
+              "supports ", supports_what, " that have all their ",
+              "dimensions <= 2^31-1 (= .Machine$integer.max)."))
 }
 
 ### The TENxMatrixSeed() constructor from the HDF5Array package calls h5dim()
@@ -133,12 +141,14 @@ h5dim <- function(filepath, name, as.integer=TRUE)
     sid <- H5Dget_space(did)
     on.exit(H5Sclose(sid), add=TRUE)
     dim <- H5Sget_simple_extent_dims(sid)$size
-    if (as.integer)
-        dim <- dim_as_integer(dim, filepath, name)
+    if (as.integer) {
+        stop_if_big_h5_dimensions(dim, filepath, name)
+        dim <- as.integer(dim)
+    }
     dim
 }
 
-### Return NULL or an integer vector parallel to 'h5dim(filepath, name)'.
+### Returns NULL or an integer vector parallel to 'h5dim(filepath, name)'.
 h5chunkdim <- function(filepath, name, adjust=FALSE)
 {
     did <- .get_h5dataset(filepath, name)
@@ -152,8 +162,10 @@ h5chunkdim <- function(filepath, name, adjust=FALSE)
     ## this though, for consistency with how rhdf5 handles the order of the
     ## dimensions everywhere else (e.g. see ?H5Sget_simple_extent_dims).
     chunkdim <- rev(H5Pget_chunk(pid))
-    chunkdim <- dim_as_integer(chunkdim, filepath, name,
-                               what="HDF5 dataset chunks")
+    stop_if_big_h5_dimensions(chunkdim, filepath, name,
+                    of_what="HDF5 dataset chunks",
+                    about_what="the dimensions of the chunks in HDF5 dataset")
+    chunkdim <- as.integer(chunkdim)
     if (adjust) {
         dim <- h5dim(filepath, name, as.integer=FALSE)
         ## A sanity check that should never fail.

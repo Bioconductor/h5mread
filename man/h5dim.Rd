@@ -4,7 +4,7 @@
 \alias{h5isdataset}
 \alias{h5isgroup}
 
-\alias{dim_as_integer}
+\alias{stop_if_big_h5_dimensions}
 
 \alias{h5dim}
 \alias{h5chunkdim}

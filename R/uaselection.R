@@ -17,7 +17,7 @@ check_ordered_uaselection <- function(dim, starts=NULL, counts=NULL)
 }
 
 ### The selection to reduce must be strictly ascending along each dimension.
-### Return NULL if the selection could not be reduced.
+### Returns NULL if the selection could not be reduced.
 ### Typical usage:
 ###     reduced <- reduce_uaselection(dim, starts, counts)
 ###     if (!is.null(reduced)) {

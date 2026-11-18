@@ -1,3 +1,44 @@
+test_that("get_h5mread_returned_type()", {
+    h5file <- tempfile(fileext=".h5")
+    h5createFile(h5file)
+
+    ## --- Specify 'storage.mode' in h5createDataset() call ---
+
+    for (Rtype in c("integer", "logical", "double", "raw", "character")) {
+        name <- paste0(Rtype, "_mat")
+        h5createDataset(h5file, name, dims=c(3, 8), storage.mode=Rtype)
+        expect_identical(get_h5mread_returned_type(h5file, name), Rtype)
+    }
+
+    ## --- Specify 'H5type' in h5createDataset() call ---
+
+    h5createDataset(h5file, "T1", dims=99, H5type="H5T_NATIVE_INT8")
+    expect_identical(get_h5mread_returned_type(h5file, "T1"), "integer")
+
+    h5createDataset(h5file, "T2", dims=99, H5type="H5T_NATIVE_UINT8")
+    expect_identical(get_h5mread_returned_type(h5file, "T2"), "raw")
+    expect_identical(get_h5mread_returned_type(h5file, "T2", as.integer=TRUE),
+                     "integer")
+
+    h5createDataset(h5file, "T3", dims=99, H5type="H5T_NATIVE_INT32")
+    expect_identical(get_h5mread_returned_type(h5file, "T3"), "integer")
+
+    h5createDataset(h5file, "T4", dims=99, H5type="H5T_NATIVE_UINT32")
+    expect_identical(get_h5mread_returned_type(h5file, "T4"), "double")
+    expect_identical(get_h5mread_returned_type(h5file, "T4", as.integer=TRUE),
+                     "integer")
+
+    h5createDataset(h5file, "T5", dims=99, H5type="H5T_NATIVE_INT64")
+    expect_identical(get_h5mread_returned_type(h5file, "T5"), "double")
+    expect_identical(get_h5mread_returned_type(h5file, "T5", as.integer=TRUE),
+                     "integer")
+
+    h5createDataset(h5file, "T6", dims=99, H5type="H5T_NATIVE_UINT64")
+    expect_identical(get_h5mread_returned_type(h5file, "T6"), "double")
+    expect_identical(get_h5mread_returned_type(h5file, "T6", as.integer=TRUE),
+                     "integer")
+})
+
 test_that("h5mread() on H5T_STRING dataset", {
     h5file <- tempfile(fileext=".h5")
     h5createFile(h5file)

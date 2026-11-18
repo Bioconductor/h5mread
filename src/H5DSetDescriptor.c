@@ -15,7 +15,7 @@
 /* Make sure to keep map_native_type_to_predef_type() and
    predef_native_type_as_string() in sync! */
 #define	RETURN_PREDEF_TYPE_IF(predef_type_id) \
-	if (H5Tequal(native_type_id, predef_type_id) > 0) \
+	if (H5Tequal(predef_type_id, native_type_id) > 0) \
 		return predef_type_id;
 static hid_t map_native_type_to_predef_type(hid_t native_type_id)
 {
@@ -88,7 +88,7 @@ static hid_t map_native_type_to_predef_type(hid_t native_type_id)
 /* Make sure to keep map_native_type_to_predef_type() and
    predef_native_type_as_string() in sync! */
 #define	RETURN_TYPE_STRING_IF(predef_type_id) \
-	if (native_type_id == predef_type_id) \
+	if (predef_type_id == native_type_id) \
 		return #predef_type_id;  /* stringize 'predef_type_id' */
 static const char *predef_native_type_as_string(hid_t native_type_id)
 {
@@ -300,14 +300,14 @@ static int h5attr_is_scalar(hid_t attr_id)
 }
 
 static int read_h5attrib_string_val(hid_t attr_id, hid_t attr_type_id,
-				    CharAE *val)
+				    CharAE *out)
 {
 	int attr_is_var_str = H5Tis_variable_str(attr_type_id);
 	if (attr_is_var_str < 0) {
 		PRINT_TO_ERRMSG_BUF("H5Tis_variable_str() returned an error");
 		return -1;
 	}
-	size_t val_nelt;
+	size_t out_nelt;
 	if (attr_is_var_str) {
 		/* When the attribute value is a variable-length string, it
 		   seems that H5Aread() expects 'buf' to be an array of n
@@ -333,34 +333,35 @@ static int read_h5attrib_string_val(hid_t attr_id, hid_t attr_type_id,
 			PRINT_TO_ERRMSG_BUF("H5Aread() returned an error");
 			return -1;
 		}
-		val_nelt = strlen(buf[0]) + 1;
-		if (val_nelt > val->_buflength)
-			CharAE_extend(val, val_nelt);
+		out_nelt = strlen(buf[0]) + 1;
+		if (out_nelt > out->_buflength)
+			CharAE_extend(out, out_nelt);
 		/* memcpy() should be slightly faster than strcpy() because
 		   we already know how many characters to copy. */
-		memcpy(val->elts, buf[0], sizeof(char) * val_nelt);
+		memcpy(out->elts, buf[0], sizeof(char) * out_nelt);
 		free(buf[0]);
 	} else {
-		val_nelt = (size_t) H5Aget_storage_size(attr_id);
-		if (val_nelt == 0) {
+		out_nelt = (size_t) H5Aget_storage_size(attr_id);
+		if (out_nelt == 0) {
 			PRINT_TO_ERRMSG_BUF("H5Aget_storage_size() returned 0");
 			return -1;
 		}
-		if (val_nelt > val->_buflength)
-			CharAE_extend(val, val_nelt);
-		int ret = H5Aread(attr_id, attr_type_id, val->elts);
+		if (out_nelt > out->_buflength)
+			CharAE_extend(out, out_nelt);
+		int ret = H5Aread(attr_id, attr_type_id, out->elts);
 		if (ret < 0) {
 			PRINT_TO_ERRMSG_BUF("H5Aread() returned an error");
 			return -1;
 		}
 	}
-	CharAE_set_nelt(val, val_nelt);
+	CharAE_set_nelt(out, out_nelt);
 	return 0;
 }
 
-/* Get an attribute value as a single string. The attribute value is
-   expected to be a scalar string, that is, a 1D dataset of length 1 and
-   class H5T_STRING. The function returns:
+/* Get an attribute value as a single string.
+   The attribute value is expected to be a scalar string, that is, a 1D
+   dataset of length 1 and class H5T_STRING.
+   Returns:
     -1: if an error occurs;
      0: if dataset 'dset_id' has no attribute with the name specified
         in 'attr_name';
@@ -369,10 +370,10 @@ static int read_h5attrib_string_val(hid_t attr_id, hid_t attr_type_id,
      2: if dataset 'dset_id' has an attribute with the name specified
         in 'attr_name' and the attribute value is a scalar string (in
         which case, and only in this case, the attribute value is copied
-        to 'val').
+        to 'out').
  */
 int _get_h5attrib_as_one_string(hid_t dset_id, const char *attr_name,
-				CharAE *val)
+				CharAE *out)
 {
 	int ret = H5Aexists(dset_id, attr_name);
 	if (ret < 0) {
@@ -409,15 +410,16 @@ int _get_h5attrib_as_one_string(hid_t dset_id, const char *attr_name,
 		H5Aclose(attr_id);
 		return 1;
 	}
-	ret = read_h5attrib_string_val(attr_id, attr_type_id, val);
+	ret = read_h5attrib_string_val(attr_id, attr_type_id, out);
 	H5Tclose(attr_type_id);
 	H5Aclose(attr_id);
 	return ret < 0 ? -1 : 2;
 }
 
-/* Get an attribute value as a single integer. The attribute value is
-   expected to be a scalar integer, that is, a 1D dataset of length 1 and
-   class H5T_INTEGER. The function returns:
+/* Get an attribute value as a single integer.
+   The attribute value is expected to be a scalar integer, that is, a 1D
+   dataset of length 1 and class H5T_INTEGER.
+   Returns:
     -1: if an error occurs;
      0: if dataset 'dset_id' has no attribute with the name specified
         in 'attr_name';
@@ -426,10 +428,10 @@ int _get_h5attrib_as_one_string(hid_t dset_id, const char *attr_name,
      2: if dataset 'dset_id' has an attribute with the name specified
         in 'attr_name' and the attribute value is a scalar integer (in
         which case, and only in this case, the attribute value is copied
-        to 'val').
+        to 'out').
  */
 static int get_h5attrib_as_one_int(hid_t dset_id, const char *attr_name,
-				   int *val)
+				   int *out)
 {
 	int ret = H5Aexists(dset_id, attr_name);
 	if (ret < 0) {
@@ -474,7 +476,7 @@ static int get_h5attrib_as_one_int(hid_t dset_id, const char *attr_name,
 		H5Aclose(attr_id);
 		return 1;
 	}
-	ret = H5Aread(attr_id, attr_type_id, val);
+	ret = H5Aread(attr_id, attr_type_id, out);
 	H5Tclose(attr_type_id);
 	H5Aclose(attr_id);
 	if (ret < 0) {
@@ -494,13 +496,23 @@ static int map_numeric_h5class_to_Rtype(H5T_class_t h5class,
 {
 	switch (h5class) {
 	    case H5T_INTEGER:
+		/* We want to map the H5 integer type to the "smallest" R
+		   type that is still big enough to represent all possible
+		   values in the H5 dataset without truncating them. */
 		if (h5type_size <= sizeof(char) && h5type_signedness == 0) {
 			*Rtype = RAWSXP;
-		} else if (h5type_size <= sizeof(int)) {
-			*Rtype = INTSXP;
-		} else {
-			*Rtype = REALSXP;
+			return 1;
 		}
+		/* Note that if the H5 type is a 32-bit **unsigned** integer
+		   type (e.g. H5T_NATIVE_UINT32), then it can contain
+		   values >= 2^31 which cannot be represented as R integers. */
+		if (h5type_size > sizeof(int) ||
+		    h5type_size == sizeof(int) && h5type_signedness == 0)
+		{
+			*Rtype = REALSXP;
+			return 1;
+		}
+		*Rtype = INTSXP;
 		return 1;
 	    case H5T_FLOAT:
 		*Rtype = REALSXP;

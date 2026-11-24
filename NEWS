@@ -1,3 +1,29 @@
+VERSION 1.6.0
+-------------
+
+SIGNIFICANT USER-VISIBLE CHANGES
+
+    o Small change in get_h5mread_returned_type() / h5mread().
+      get_h5mread_returned_type() now returns "double" instead of "integer"
+      if the H5 type of the dataset to read is a 32-bit **unsigned** integer
+      type (e.g. H5T_NATIVE_UINT32).
+      This means that h5mread() now returns an array of type() "double"
+      instead of "integer" when reading such dataset. This avoids truncation
+      of values that are >= 2^31.
+      Note that the user can always force the returned type() to "integer" by
+      calling h5mread() with 'as.integer=TRUE' if they know that the dataset
+      does not contain values >= 2^31 or if they don't care that big values
+      get truncated.
+
+BUG FIXES
+
+    o Fix h5mread() on H5T_VARIABLE dataset with NULL pointers.
+      Starting with rhdf5 2.57.10, NULL pointers in an H5T_VARIABLE dataset
+      are interpreted as NAs. So h5mread() now:
+      - works on an H5T_VARIABLE dataset with NULL pointers (used to crash!);
+      - interprets NULL pointers as NAs like rhdf5::h5read() does.
+
+
 VERSION 1.4.0
 -------------
 
